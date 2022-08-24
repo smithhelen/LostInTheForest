@@ -20,7 +20,7 @@ standard_ca_map <- function(var, class) {
 }
 
 # iterate over the variable columns and grab the output as a new data.frame for ca, and store the absent level stuff for later 
-prepare_training_ca_reimpl <- function(data, var_cols, class) {
+prepare_training_ca <- function(data, var_cols, class) {
   # pull out our variable columns and class
   var_cols <- dplyr::select(data,{{var_cols}})
   classes   <- data %>% pull({{class}})
