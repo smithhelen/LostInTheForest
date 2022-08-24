@@ -1,7 +1,7 @@
 #### Prepare test data and training data for pco method ####
 
 # Load functions
-class("methods/helpers.R")       # Functions used internally in the methods
+source("methods/helpers.R")       # Functions used internally in the methods
 
 epsilon <- sqrt(.Machine$double.eps)
 
