@@ -5,6 +5,8 @@ library(tidyverse)
 library(ranger)
 library(caret)   # for createFolds
 library(varhandle) # for to.dummy()
+library(seqinr) # for Hamming distances
+library(stringdist) # for Hamming distances
 
 # Load in our functions
 source("methods/ca.R") # CA method
