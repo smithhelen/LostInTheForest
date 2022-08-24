@@ -1,0 +1,12 @@
+#### Calculate Hamming distances between levels of predictor variable ####
+
+# function to create distance (Hamming) matrices between alleles for each gene ie seq differences on alleles not individuals
+dfun <- function(gene, dat, seqdat){  #gene is column name
+  alleles <- dat %>% pull({gene}) %>% unique
+  x <- seqdat %>% select({gene}) %>% distinct %>% pull({gene})
+  d <- stringdistmatrix(x, x, method="hamming")
+  rownames(d) <- alleles
+  colnames(d) <- alleles
+  return(d)
+}
+
