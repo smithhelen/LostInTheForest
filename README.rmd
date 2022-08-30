@@ -1,13 +1,13 @@
 ---
 title: "LostInTheForest"
 output:
+  github_document:
+    toc: yes
+    toc_depth: 4
   html_document:
     toc: yes
     toc_depth: '4'
     df_print: paged
-  github_document:
-    toc: yes
-    toc_depth: 4
   pdf_document:
     toc: yes
     toc_depth: '4'
