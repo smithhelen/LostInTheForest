@@ -40,7 +40,8 @@ prepare_training_pco <- function(data, var_cols, class, d, axes=2) {
   # iterate over the var columns and distance matrices, and convert
   prepped <- map2(var_cols, d, factor_to_pco_score, axes) %>% compact() # removes empties
   output <- map(prepped,"output")
-  prepped_data <- bind_cols(class = classes, map2(output, names(output), ~ .x %>% set_names(paste(.y, names(.x), sep="."))))
+  prepped_data <- bind_cols(data.frame(classes) %>% setNames(data %>% select({{class}}) %>% colnames), 
+                            map2(output, names(output), ~ .x %>% set_names(paste(.y, names(.x), sep="."))))
   extra <- map(prepped, "extra")
   list(training = prepped_data,
        extra = extra)

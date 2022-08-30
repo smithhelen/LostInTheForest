@@ -25,7 +25,8 @@ prepare_training_ca0 <- function(data, var_cols, class) {
   classes   <- data %>% pull({{class}})
   # iterate over the var columns, and convert
   prepped <- map(var_cols, factor_to_ordinal, class = classes)
-  prepped_data <- bind_cols(class = classes, map_dfc(prepped, "output"))
+  prepped_data <- bind_cols(data.frame(classes) %>% setNames(data %>% select({{class}}) %>% colnames), 
+                            map_dfc(prepped, "output"))
   extra <- map(prepped, "extra")
   list(training = prepped_data,
        extra = extra)
