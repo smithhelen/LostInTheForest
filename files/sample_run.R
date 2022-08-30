@@ -40,10 +40,10 @@ test <- prepare_test_pco(Dat.test, train$extra, id)
 
 ## generate random forest models:
 # 1. for binary method:
-rf_mod <- ranger(dependent.variable.name = "Class", data = train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
+rf_mod <- ranger(dependent.variable.name = "class", data = train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
 
 # 2. for other methods:
-rf_mod <- ranger(Class ~ ., data=train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
+rf_mod <- ranger(class ~ ., data=train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
 
 ## make predictions for Human data
 Prediction <- predict(rf_mod, data=test, predict.all = FALSE)$predictions
