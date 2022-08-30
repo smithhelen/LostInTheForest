@@ -19,9 +19,9 @@ factor_to_ordinal <- function(var, class) {
 }
 
 # iterate over the variable columns and grab the output as a new data.frame to send into ca, and store the absent level stuff for later
-prepare_training_ca0 <- function(data, vars, class) {
+prepare_training_ca0 <- function(data, var_cols, class) {
   # pull out our var_cols and class
-  var_cols <- dplyr::select(data,{{vars}})
+  var_cols <- dplyr::select(data,{{var_cols}})
   classes   <- data %>% pull({{class}})
   # iterate over the var columns, and convert
   prepped <- map(var_cols, factor_to_ordinal, class = classes)

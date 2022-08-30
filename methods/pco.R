@@ -33,9 +33,9 @@ factor_to_pco_score <- function(var, dist, axes) {
                     num_vars = ncol(X), var_names = colnames(X)))
 }
 
-prepare_training_pco <- function(data, vars, class, d, axes=2) {
+prepare_training_pco <- function(data, var_cols, class, d, axes=2) {
   # pull out our var_cols and class
-  var_cols <- dplyr::select(data,{{vars}})
+  var_cols <- dplyr::select(data,{{var_cols}})
   classes   <- data %>% pull({{class}})
   # iterate over the var columns and distance matrices, and convert
   prepped <- map2(var_cols, d, factor_to_pco_score, axes) %>% compact() # removes empties
