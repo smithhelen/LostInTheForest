@@ -24,7 +24,7 @@ Dat.test <- LostInTheForest %>% filter(class == "Human") %>% droplevels() %>% mu
 # prepare data using method of choice:
 # 1. ca method
 train <- prepare_training_ca(Dat.train, starts_with("Var"), "class")
-test <- prepare_test_ca(Dat.test)
+test <- prepare_test_ca(Dat.test, train$extra, id) 
 
 # 2. binary method
 train <- prepare_training_ca_binary(Dat.train, starts_with("Var"), "class")
