@@ -22,7 +22,7 @@ is_unique <- function(data, extra) {
 # do the tree prediction
 predict_row <- function(tree, data_row, uniques_row) {
   # pass the data down the tree row by row
-  names(uniques_row) <- names(uniques_row) %>% substr(0,8)
+  names(uniques_row) <- names(uniques_row) %>% substr(0,5)
   uses_unique <- 0
   prediction <- NULL
   vars_used_in_tree <- NULL
@@ -38,9 +38,9 @@ predict_row <- function(tree, data_row, uniques_row) {
     # is our level unique?
     split = tree$splitvarName[row]  #name of var used in tree
     #cat(split)   # for checking errors
-    if (uniques_row[[split %>% substr(0,8)]]) {
+    if (uniques_row[[split %>% substr(0,5)]]) {
       uses_unique = uses_unique + 1
-      unique_vars_used_in_tree <- c(unique_vars_used_in_tree, split %>% substr(0,8))
+      unique_vars_used_in_tree <- c(unique_vars_used_in_tree, split %>% substr(0,5))
     }
     # go down the tree
     if (data_row[[split]] <= tree$splitval[row]) { # Ranger uses <= here, and this gives same result
@@ -50,7 +50,7 @@ predict_row <- function(tree, data_row, uniques_row) {
       # right tree
       row <- tree$rightChild[row] + 1
     }
-    vars_used_in_tree <- c(vars_used_in_tree, split %>% substr(0,8))
+    vars_used_in_tree <- c(vars_used_in_tree, split %>% substr(0,5))
   }
   tibble(prediction=prediction, uses_unique=uses_unique, splitting_vars=list(vars_used_in_tree), unique_splitting_vars=list(unique_vars_used_in_tree))
 }
