@@ -23,3 +23,13 @@ eigen_decomp <- function(X, symmetric) {
 }
 
 
+# Filter out eigenvalues based on some criteria
+filter_eigenvalues <- function(ev, m = NULL, mp = 100) {
+  if(is.null(m)){
+    VarExp <- cumsum(ev/sum(ev)*100)
+    m <- min(which(round(VarExp,0) >= mp)) #round to avoid error (when rounding error makes it not quite 100, leading to Inf)
+  }
+  m <- min(m, length(ev))
+  ev[seq_len(m)]
+}
+
