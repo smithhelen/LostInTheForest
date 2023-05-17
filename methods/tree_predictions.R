@@ -1,18 +1,18 @@
 # Pull out individual tree predictions
 
 is_unique_level <- function(var, extra) {
+  if(!is.numeric(var))  {var <- droplevels(var)}
   var_levels <- pluck(extra, "var_levels")
-  var <- droplevels(var)
   is_unique <- !(var %in% var_levels)
   num_vars <- pluck(extra, "num_vars")
-  var_names <- pluck(extra, "var_names")
+  var_names <- pluck(extra, "names")
   out <- data.frame(matrix(is_unique, ncol=num_vars, nrow=length(is_unique))) %>% set_names(var_names)
   out
 }
 
-is_unique <- function(data, extra) {
-  var_cols <- data %>% select(any_of(names(extra)))
-  output <- map2(var_cols, extra, is_unique_level)
+is_unique <- function(data, list_of_extras) {
+  var_cols <- data %>% select(any_of(names(list_of_extras)))
+  output <- map2(var_cols, list_of_extras, is_unique_level)
   uniques <- map2_dfc(output, names(output), 
                       ~ if(!is.null(names(.x))) {.x %>% set_names(paste(.y, names(.x), sep="."))} 
                       else(.x %>% set_names(paste(.y))))
@@ -52,20 +52,31 @@ predict_row <- function(tree, data_row, uniques_row) {
     }
     vars_used_in_tree <- c(vars_used_in_tree, split %>% sub("\\..*","",.))
   }
-  tibble(prediction=prediction, uses_unique=uses_unique, splitting_vars=list(vars_used_in_tree), unique_splitting_vars=list(unique_vars_used_in_tree))
+  tibble(prediction=prediction, uses_unique=uses_unique, splitting_vars=list(vars_used_in_tree), 
+         unique_splitting_vars=list(unique_vars_used_in_tree))
+}
+
+my_treeInfo <- function(mod, tree_number) {
+  tree <- treeInfo(mod, tree_number)
+  # treeInfo produces a splits column with both numeric and categorical splits, where
+  # the categorical splits are decoded from their bitpattern encoding for readability.
+  # We want the bitpattern encoding as that is the most efficient way of matching against
+  # splits, so we'll override it here:
+  tree$splitval = mod$forest$split.values[[tree_number]]
+  tree
 }
 
 predict_tree <- function(mod, tree_number, nd, nu, id) {
   #cat("working on tree", tree_number, "\n")
-  tree <- treeInfo(mod, tree_number)
+  tree <- my_treeInfo(mod, tree_number)
   out_dfr <- map2_dfr(nd, nu, ~predict_row(tree, .x, .y))
-  out_dfr %>%
+  out_dfr |>
     mutate(tree = tree_number,
-           row = id)
+           id = id)
 }
 
 # do the predictions
-predict_by_tree <- function(mod, new_data, new_unique) {
+predict_by_tree <- function(mod, new_data, new_unique, id) {
   nd <- split(new_data, 1:nrow(new_data))  # list, each entry is a row of test data
   nu <- split(new_unique, 1:nrow(new_unique))  # list, each entry is a row of uniques (ie TRUE or FALSE for each var)
   id = new_data %>% pull(id)
@@ -75,11 +86,14 @@ predict_by_tree <- function(mod, new_data, new_unique) {
   if (!is.null(mod$forest$levels)) {
     # fix up the levels. We have to undo the command:
     # factor(result$prediction, levels = forest$class.values, labels = forest$levels)
+    # there is the following new code in ranger GitHub but the package is not yet updated (10/11/2022)
+    #if (!is.null(forest$levels)) { result$prediction <- integer.to.factor(result$prediction, labels = forest$levels)  }
     fixup <- data.frame(predict = mod$forest$levels[mod$forest$class.values], treeinfo = mod$forest$levels)
     predictions <- predictions %>%
       left_join(fixup, by=c("prediction" = "treeinfo")) %>%
-      select(row, tree, prediction = predict, uses_unique, splitting_vars, unique_splitting_vars)
+      select(id, tree, prediction = predict, uses_unique, splitting_vars, unique_splitting_vars)
   }
   predictions
 }
+
 
