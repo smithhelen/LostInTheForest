@@ -25,34 +25,38 @@ factor_to_pco_score <- function(var, dist, axes) {
   nlambdas <- min(nlambdas, axes)
   # Scale eigenvectors
   lambdas_B <- eigen_B$values[seq_len(nlambdas)]
-  X <- sweep(eigen_B$vectors[, seq_len(nlambdas), drop=FALSE], 2, sqrt(abs(lambdas_B)), "*")
-  score <- left_join(data.frame(Var_Level = var_levels), data.frame(X) %>% rownames_to_column("Var_Level"), by = "Var_Level")
-  output <- score %>% select(-Var_Level)
+  Qo <- eigen_B$vectors
+  Q <- sweep(Qo[, seq_len(nlambdas), drop=FALSE], 2, sqrt(abs(lambdas_B)), "*")
+  score <- left_join(data.frame(Var_Level = var_levels), data.frame(Q) |> rownames_to_column("Var_Level"), by = "Var_Level")
+  output <- score |> select(-Var_Level)
   list(output = output,
-       extra = list(d=dist, var_levels=levels(var_levels), diag.B.train=diag(B.train), X=X, lambdas_B=lambdas_B, 
-                    num_vars = ncol(X), var_names = colnames(X)))
+       extra = list(d=dist, var_levels=levels(var_levels), diag.B.train=diag(B.train), Q=Q, lambdas_B=lambdas_B, 
+                    num_vars = ncol(Q), var_names = colnames(Q)))
 }
 
 prepare_training_pco <- function(data, var_cols, class, d, axes=2) {
   # pull out our var_cols and class
-  var_cols <- dplyr::select(data,{{var_cols}})
-  classes   <- data %>% pull({{class}})
+  var_cols <- dplyr::select(data, all_of(var_cols))
+  classes   <- data %>% pull(class)
   # iterate over the var columns and distance matrices, and convert
   prepped <- map2(var_cols, d, factor_to_pco_score, axes) %>% compact() # removes empties
   output <- map(prepped,"output")
-  prepped_data <- bind_cols(data.frame(classes) %>% setNames(data %>% select({{class}}) %>% colnames), 
+  prepped_data <- bind_cols(data.frame(classes) %>% setNames(data %>% select(all_of(class)) %>% colnames), 
                             map2(output, names(output), ~ .x %>% set_names(paste(.y, names(.x), sep="."))))
+  
+  
+  
   extra <- map(prepped, "extra")
   list(training = prepped_data,
        extra = extra)
 }
 
-predict_pco <- function(new.var_level, d, diag.B.train, X, lambdas_B) {
+predict_pco <- function(new.var_level, d, diag.B.train, Q, lambdas_B) {
   # new.var_level is length one
   d.new <- d[new.var_level, names(diag.B.train)]
   d.gower <- diag.B.train - (d.new ^ 2)
-  newX <- d.gower %*% X / (2 * lambdas_B)
-  colnames(newX) = colnames(X)
+  newX <- d.gower %*% Q / (2 * lambdas_B)
+  colnames(newX) = colnames(Q)
   new_var_level_score <- data.frame(Var_Level = new.var_level, newX)
   new_var_level_score
 }
@@ -64,20 +68,20 @@ impute_score_pco <- function(var, extra) {
   new.var_levels <- setdiff(levels(var), var_levels)
   d <- pluck(extra, "d")
   diag.B.train <- pluck(extra, "diag.B.train")
-  X <- pluck(extra, "X")
+  Q <- pluck(extra, "Q")
   lambdas_B <- pluck(extra, "lambdas_B")
-  new_scores <- map_df(new.var_levels, ~predict_pco(new.var_level = {.}, d, diag.B.train, X, lambdas_B))
-  var_level_score <- bind_rows(data.frame(X) %>% rownames_to_column("Var_Level"), new_scores)
+  new_scores <- map_df(new.var_levels, ~predict_pco(new.var_level = {.}, d, diag.B.train, Q, lambdas_B))
+  var_level_score <- bind_rows(data.frame(Q) %>% rownames_to_column("Var_Level"), new_scores)
   list(test_score = data.frame(Var_Level = var) %>% 
          left_join(var_level_score, by = "Var_Level") %>%
          select(-Var_Level))
 }
 
 prepare_test_pco <- function(data, extra, id) {
-  id <- data %>% pull({{id}})
   var_cols <- data %>% select(any_of(names(extra)))
   newdata_score <- map2(var_cols, extra, impute_score_pco)
   output <- map(newdata_score,"test_score")
   newdata_pred <- map2_dfc(output, names(output), ~ .x %>% set_names(paste(.y, names(.x), sep=".")))
-  newdata_pred <- bind_cols(id=id, newdata_pred)
+  newdata_pred <- bind_cols(data |> select(all_of(id)), newdata_pred)
+  newdata_pred
 }
