@@ -82,17 +82,17 @@ predict_by_tree <- function(mod, new_data, new_unique, id) {
   id = new_data %>% pull(id)
   predictions <- map_dfr(seq_len(mod$num.trees), ~predict_tree(mod=mod, tree_number=., nd=nd, nu=nu, id=id))
   
-  # BUG IN RANGER. treeInfo() produces incorrect forest levels 
-  if (!is.null(mod$forest$levels)) {
-    # fix up the levels. We have to undo the command:
-    # factor(result$prediction, levels = forest$class.values, labels = forest$levels)
-    # there is the following new code in ranger GitHub but the package is not yet updated (10/11/2022)
-    #if (!is.null(forest$levels)) { result$prediction <- integer.to.factor(result$prediction, labels = forest$levels)  }
-    fixup <- data.frame(predict = mod$forest$levels[mod$forest$class.values], treeinfo = mod$forest$levels)
-    predictions <- predictions %>%
-      left_join(fixup, by=c("prediction" = "treeinfo")) %>%
-      select(id, tree, prediction = predict, uses_unique, splitting_vars, unique_splitting_vars)
-  }
+  # # BUG IN RANGER. treeInfo() produces incorrect forest levels 
+  # if (!is.null(mod$forest$levels)) {
+  #   # fix up the levels. We have to undo the command:
+  #   # factor(result$prediction, levels = forest$class.values, labels = forest$levels)
+  #   # there is the following new code in ranger GitHub but the package is not yet updated (10/11/2022)
+  #   #if (!is.null(forest$levels)) { result$prediction <- integer.to.factor(result$prediction, labels = forest$levels)  }
+  #   fixup <- data.frame(predict = mod$forest$levels[mod$forest$class.values], treeinfo = mod$forest$levels)
+  #   predictions <- predictions %>%
+  #     left_join(fixup, by=c("prediction" = "treeinfo")) %>%
+  #     select(id, tree, prediction = predict, uses_unique, splitting_vars, unique_splitting_vars)
+  # }
   predictions
 }
 
