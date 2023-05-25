@@ -9,7 +9,7 @@ factor_to_ordinal_ca0 <- function(var, class) {
   if (nlevels(var_levels) < 2) {
     # if we only have one var_level we can't do anything
     return(list(output = rep(1, times=length(var)),
-                extra = list(var_levels=levels(var_levels), num_vars = 1, var_names=NULL,
+                extra = list(var_levels=levels(var_levels), dim = 1, suffix=NULL,
                              score = data.frame(Var_Level = c(levels(var_levels), "new"), Rank = c(1, 2)))))
   }
   ct <- table(Var_Level=var_levels,Class=class)
@@ -21,7 +21,7 @@ factor_to_ordinal_ca0 <- function(var, class) {
   score <- P %*% pc1 %>% as.data.frame() %>% rownames_to_column("Var_Level") %>% setNames(., c("Var_Level","PC1")) %>% mutate(Rank = rank(PC1, ties.method = "first"))
   output_factor <- data.frame(Var_Level = var_levels) %>% left_join(score, by="Var_Level") %>% pull(Rank)
   list(output = output_factor,
-       extra = list(score = score, var_levels = levels(var_levels), num_vars=1, var_names=NULL))
+       extra = list(score = score, var_levels = levels(var_levels), dim=1, suffix=NULL))
 }
 
 # iterate over the variable columns and grab the output as a new data.frame to send into ca, and store the absent level stuff for later
@@ -49,11 +49,12 @@ impute_ordinal_ca0 <- function(var, extra) {
 }
 
 # iterate over the variable columns and use the extra info from before to remap the levels in the test data. This is then ready for sending to ca
-prepare_test_ca0 <- function(data, extra, id) {
+prepare_test_ca0 <- function(data, list_of_extras, id) {
   # first remap the variable levels to the appropriate ordinal level
   id <- data %>% pull({{id}})
-  newdata_pred <- map2_dfc(data %>% select(any_of(names(extra))), extra, impute_ordinal_ca0)
+  test_data <- data %>% select(any_of(names(list_of_extras)))
+  newdata_pred <- map2_dfc(test_data, list_of_extras, impute_ordinal_ca0)
   newdata_pred <- bind_cols(id=id, newdata_pred)
+  newdata_pred
 }
-
 
