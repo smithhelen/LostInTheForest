@@ -4,9 +4,9 @@ is_unique_level <- function(var, extra) {
   if(!is.numeric(var))  {var <- droplevels(var)}
   var_levels <- pluck(extra, "var_levels")
   is_unique <- !(var %in% var_levels)
-  num_vars <- pluck(extra, "num_vars")
-  var_names <- pluck(extra, "names")
-  out <- data.frame(matrix(is_unique, ncol=num_vars, nrow=length(is_unique))) %>% set_names(var_names)
+  dim <- pluck(extra, "dim")
+  suffix <- pluck(extra, "suffix")
+  out <- data.frame(matrix(is_unique, ncol=dim, nrow=length(is_unique))) %>% set_names(suffix)
   out
 }
 
@@ -38,9 +38,19 @@ predict_row <- function(tree, data_row, uniques_row) {
     # is our level unique?
     split = tree$splitvarName[row]  #name of var used in tree
     #cat(split)   # for checking errors
-    if (uniques_row[[split %>% sub("\\..*","",.)]]) {
+    #' JM 24th May 2023. When we add new variables in, over and above the categorical one
+    #' that has been dealt with via PCO/Cerda/CA or whatever, then it won't have any
+    #' uniques. So it won't be in uniques_row at all.
+    #' Things that are in uniques_row seem to be named with anything after the first
+    #' dot being removed. If there's no dot, then that's OK, nothing is removed.
+    #' So, we shouldn't name variables with dots in them unless it's intentional
+    #' (e.g. PCO axes etc) that they should be removed again here!
+    #' So, we will check if the named split variable is in the uniques row
+    name_of_split_variable <- split %>% sub("\\..*","",.)
+    if (name_of_split_variable %in% names(uniques_row) && #' This variable is in the uniques row
+        uniques_row[[name_of_split_variable]]) {
       uses_unique = uses_unique + 1
-      unique_vars_used_in_tree <- c(unique_vars_used_in_tree, split %>% sub("\\..*","",.))
+      unique_vars_used_in_tree <- c(unique_vars_used_in_tree, name_of_split_variable)
     }
     # go down the tree
     if (data_row[[split]] <= tree$splitval[row]) { # Ranger uses <= here, and this gives same result
@@ -50,7 +60,7 @@ predict_row <- function(tree, data_row, uniques_row) {
       # right tree
       row <- tree$rightChild[row] + 1
     }
-    vars_used_in_tree <- c(vars_used_in_tree, split %>% sub("\\..*","",.))
+    vars_used_in_tree <- c(vars_used_in_tree, name_of_split_variable)
   }
   tibble(prediction=prediction, uses_unique=uses_unique, splitting_vars=list(vars_used_in_tree), 
          unique_splitting_vars=list(unique_vars_used_in_tree))
