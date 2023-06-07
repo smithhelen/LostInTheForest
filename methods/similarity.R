@@ -36,18 +36,15 @@ impute_score_similarity <- function(var, extra) {
   new_scores <- d[c(var_levels, new.var_levels), var_levels]
   var_level_score <- new_scores %>% as.data.frame() %>% rownames_to_column("Var_Level")
   output <- data.frame(Var_Level = var) %>% left_join(var_level_score, by = "Var_Level") %>% select(-Var_Level)
-  list(test_score = output)
+  list(output = output)
 }
 
 prepare_test_similarity <- function(data, list_of_extras, id) {
   test_data <- data %>% select(any_of(names(list_of_extras)))
-  output <- map2(test_data, list_of_extras, impute_score_similarity)
+  prepped <- map2(test_data, list_of_extras, impute_score_similarity)
+  output <- map(prepped, "output")
   newdata_pred <- map2_dfc(output, names(output), ~ .x %>% set_names(paste(.y, names(.x), sep=".")))
   newdata_pred <- bind_cols(data |> select(all_of(id)), newdata_pred)
   newdata_pred
 }
-
-
-
-
 
