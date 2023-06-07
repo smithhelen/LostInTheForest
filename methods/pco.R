@@ -1,7 +1,7 @@
 #### Prepare test data and training data for pco method ####
 
 # Load functions
-source("methods/helpers.R")       # Functions used internally in the methods
+source(here("methods","helpers.R"))       # Functions used internally in the methods
 
 epsilon <- sqrt(.Machine$double.eps)
 
@@ -31,7 +31,7 @@ factor_to_pco_score <- function(var, dist, axes) {
   output <- score |> select(-Var_Level)
   list(output = output,
        extra = list(d=dist, var_levels=levels(var), diag.B.train=diag(B.train), Q=Q, lambdas_B=lambdas_B, 
-                    dim = ncol(Q), suffix = colnames(Q)))
+                    dim = ncol(Q), suffix = colnames(Q), propG = eigen_B$values))
 }
 
 prepare_training_pco <- function(data, var_cols, class, d, axes=2) {
