@@ -33,7 +33,11 @@ impute_binary <- function(var, extra) {
   missing_vars <- setdiff(vars, colnames(var_binary))
   empty_cols <- data.frame(matrix(0, nrow=nrow(var_binary),ncol=length(missing_vars)))
   colnames(empty_cols) <- missing_vars
-  test_binary <- var_binary %>% bind_cols(empty_cols)
+  test_binary <- var_binary %>% bind_cols(empty_cols) %>% select(any_of(vars))
+  # sanity check that the columns we have are only those that appear in the training data (and that
+  # we have all of them in the right order)
+  stopifnot(names(test_binary) == vars)
+  return(test_binary)
 }
 
 # iterate over the variable columns and use the extra info from before to remap the levels in the test data

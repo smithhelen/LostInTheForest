@@ -1,0 +1,381 @@
+---
+title: "Midwest survey using One-hot, CA, CA0, PCO, and Cerda similarity methods"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 5)
+library(tidyverse)
+library(here)
+```
+
+```{r, echo=FALSE}
+colorize <- function(x, color) {
+  if (knitr::is_latex_output()) {
+    sprintf("\\textcolor{%s}{%s}", color, x)
+  } else if (knitr::is_html_output()) {
+    sprintf("<span style='color: %s;'>%s</span>", color,
+      x)
+  } else x
+}
+```
+
+### `r colorize("Midwest survey using One-hot, CA, CA0, PCO, and Cerda similarity methods", "blue")`
+
+#### 1. Load data
+
+Midwest survey data from Cerda et al 2018.  
+Survey to know if people self-identify as Midwesterners.  
+Sample size:  2,778.   
+Target variable (multiclass-clf): ‘Location (Census Region)’ (9 classes) - Cerda says 10 so perhaps includes missing, although they remove these rows anyway.
+Cerda selected categorical variable: ‘In your own words, what would you call the part of the country you live in now?’ (cardinality: 1,008) - again Cerda had extra one perhaps for missing. Also when converting all to lower case, the cardinality drops to 843  
+Other explanatory variables: ‘Personally identification as a Midwesterner?’ (4 levels, ordinal), ‘Gender’ (2 levels), ‘Age’ (4 levels, ordinal), ‘Household Income’ (5 levels, ordinal), ‘Education’ (5 levels, ordinal), ‘Illinois (IL) in the Midwest?’, ‘IN?’, ‘IA?’, ‘KS?’, ‘MI?’, ‘MN?’, ‘MO?’, ‘NE?’, ‘ND?’, ‘OH?’, ‘SD?’, ‘WI?’, ‘AR?’, ‘CO?’, ‘KY?’, ‘OK?’, ‘PA?’, ’WV?’, ’MT?’, ‘WY?’ (each of these last variables are indicator variables, although an individual can belong to more than one).
+
+```{r, include=FALSE}
+midwest_raw <- read.csv(here("not_on_github","midwest","midwest_survey.csv"), header=T, na.strings=c(""," ","NA"))
+str(midwest_raw)
+midwest_raw |> map_df(function(x){x |> as.factor() |> nlevels()}) |> t()
+
+midwest_raw |> pull(categorical_variable) |> as.factor() |> nlevels()  # 1008 levels
+midwest_raw |> mutate(categorical_variable=tolower(categorical_variable)) |> pull(categorical_variable) |> as.factor() |> nlevels() # 843 levels after making all lower case
+midwest_raw |> mutate(categorical_variable=tolower(categorical_variable)) |> filter(!is.na(census_region)) |> pull(categorical_variable) |> as.factor() |> nlevels() # 780 levels are removing rows with missing target
+
+```
+
+**Data preprocessing:**
+
+-- remove rows with missing values for the target variable or in any explanatory variable other than the selected categorical variable (reduces to 2421 observations);  
+-- for the selected categorical variable replace missing entries by the string ‘nan’;  
+-- transform all entries for the categorical variable to lower case;  
+-- convert all variables to ordinal, binary, or nominal factors.
+
+Note that Cerda 2018 standardized every column of the feature matrix to a unit variance
+
+
+```{r, include=FALSE}
+midwest_tidy <- midwest_raw |> 
+  # remove id (because it contains rows that will be removed) and respondent
+  select(-id, -respondent) |> 
+  # fill in binary zeros
+  mutate(across(IL:WY, \(.) {replace(.,is.na(.),0)})) |> 
+  # remove rows with missing values for the target variable census_region
+  filter(!is.na(census_region)) |> 
+  # remove na from categorical_variable to avoid na in distance matrix
+  # need to change to string (rather than "") so can use tidymodels with probability forests
+  mutate(across(categorical_variable, \(.) {replace(.,is.na(.),"nan")})) |> 
+  # remove rows with missing values for explanatory variables other than the selected categorical variable
+  drop_na(where(is.character)) |> 
+  # transform all entries for the categorical variable to lower case
+  mutate(categorical_variable = tolower(categorical_variable)) |> 
+  # re-add id
+  rownames_to_column("id") |> 
+  # convert ordinal variables to ordered factors
+  mutate(education = factor(education, levels=c("Some college", "Less than high school degree", "High school degree", "Associate or bachelor degree", "Graduate degree"), ordered=TRUE, exclude = NULL), 
+         age = factor(age, levels=c("18-29", "30-44", "45-60", "> 60"), ordered=TRUE, exclude = NULL), 
+         household_income = factor(household_income, levels=c("$0 - $24,999", "$25,000 - $49,999", "$50,000 - $99,999", "$100,000 - $149,999", "$150,000+"), ordered=TRUE, exclude = NULL),
+         personal_id = factor(personal_id, levels=c("Not at all","Not much","Some","A lot"), ordered=TRUE, exclude = NULL)) |> 
+  # convert character variables to factors
+  mutate(across(!where(is.numeric), factor)) |> 
+  # convert all predictor variables other than the categorical_variable to numeric
+  mutate(across(where(is.factor) & -c(id, census_region, categorical_variable), as.numeric))
+
+str(midwest_tidy)
+```
+
+Because of all the spaces and dots in the categorical variable levels, `make.names()` will reduce the number of unique levels, so we need to make them unique to start with.
+
+```{r}
+unique_levels <- data.frame(categorical_variable = levels(midwest_tidy$categorical_variable)) |> 
+  mutate(unique_categorical_variable = categorical_variable |> make.names(unique = TRUE))
+
+midwest <- midwest_tidy |> left_join(unique_levels, by="categorical_variable") |> mutate(categorical_variable = as.factor(unique_categorical_variable), .keep="unused") 
+
+str(midwest)
+
+```
+
+
+
+#### 2. Load methods
+
+**Load libraries and functions**
+
+```{r, include=FALSE}
+# Load libraries
+library(ranger)
+library(caret)   # for createFolds
+
+# Load in our functions (PCO not required as pre-transforming data)
+source(here("methods","tree_predictions.R")) # to pull out individual tree predictions
+source(here("methods","ranger_mods.R"))
+source(here("methods","ca.R")) # CA method
+source(here("methods","binary.R")) # Binary method
+source(here("methods","ca_unbiased.R"))  # CA method with new levels scored as zero
+source(here("methods","pco.R")) # PCO method
+source(here("methods","similarity.R"))
+
+```
+
+**Define the data**
+
+```{r, eval=FALSE}
+# Add a prefix ("Var") to all the predictor variables names (so the functions can recognise the predictors).
+# Add a prefix ("Ignore") to the numerical variable names so the functions will ignore them.
+# This isn't necessary as there's only one variable so will just name it directly 
+
+midwest <- midwest |> 
+  rename_with(.fn = function(.x){paste0("Var_", .x)}, .cols=categorical_variable) |> 
+  rename_with(.fn = function(.x){paste0("Ignore_", .x)}, .cols=-c(id, Var_categorical_variable, census_region))
+
+str(midwest)
+```
+
+The different methods will use different encodings of the categorical_variable column.  
+The data is now exactly the same for each method
+
+```{r}
+list.of.data <- list(ca=midwest,
+                     binary=midwest,
+                     ca0=midwest,
+                     pco=midwest,
+                     similarity=midwest)
+
+```
+
+
+**Split data into training and test sets using folds**
+
+```{r}
+set.seed(3)
+#flds <- createFolds(y=midwest$census_region, k=10) 
+flds <- createFolds(y=midwest$census_region, k=2) 
+```
+
+Split into training and test sets (these are now exactly the same for each method)
+
+```{r}
+list.of.train <- map(list.of.data, function(x) {map(flds, ~slice(x, {-.}))})
+list.of.test <- map(list.of.data, function(x) {map(flds, ~slice(x, .))})
+
+```
+
+
+**Calculate distance matrix** - Levenshtein distance "lv" ("hamming" only works when strings are the same length)
+
+The categorical variables are either binary or ordinal apart from 'categorical_variable'.
+Calculate a distance matrix for this variable only. It needs to be in a list for the pco and similarity functions though.
+
+```{r, include=FALSE}
+d <- list(categorical_variable = stringdist::stringdistmatrix(midwest$categorical |> unique(), 
+                                                                  midwest$categorical |> unique(), method = "lv", useNames = "strings"))
+```
+
+**Prepare the data**
+
+Note that the ca method doesn't allow for numeric columns or else we could just use the ca method on the transformed data.
+
+```{r}
+list.of.methods <- list(ca="ca", binary="binary",ca0="ca0", pco="pco", similarity="similarity")
+
+list.of.prepped.data <- pmap(list(list.of.train, list.of.test, list.of.methods), 
+                             function(x, y, z) {map2(x, y, ~prep_data(.x, .y, method=z, class = "census_region", id="id", var_id="categorical", d=d, axes=2))})
+```
+
+
+**Merge the prepped data with the ignored columns and train the random forest models**
+
+```{r}
+list.of.models <- pmap(list(list.of.prepped.data, list.of.train, list.of.test, list.of.methods), 
+                       function(prepped.folds, train.folds, test.folds, method){
+                         pmap(list(prepped.folds, train.folds, test.folds), 
+                              function(prepped.dat, train.dat, test.dat, ntrees=1, class="census_region", id="id"){
+                                other.train <- train.dat |> select(-c(id, categorical_variable, census_region))
+                                other.test <- test.dat |> select(-c(categorical_variable, census_region))
+                                train_dat <- prepped.dat$train$training |> bind_cols(other.train)
+                                test_dat <- prepped.dat$test |> left_join(other.test, by="id")
+                                classes <- train_dat |> pull(class)
+                                ranger_mod <- if(method=="binary") {
+                                  ranger(dependent.variable.name = class, data = train.dat, oob.error = TRUE, num.trees=ntrees, respect.unordered.factors = TRUE)
+                                } else {
+                                  ranger(classes ~ ., data=train.dat |> select(-any_of(class)), oob.error = TRUE, num.trees=ntrees, respect.unordered.factors = TRUE)
+                                }
+                                out <- list(train=prepped.dat$train, test=test.dat, ranger_mod=ranger_mod, class=class, id=id)
+                                out
+                              })
+                       })
+```
+
+
+Predict the test data and merge with true class
+
+```{r}
+list.of.forest_predictions <- map2(list.of.models, list.of.test, function(model, dat){  # list of 5 methods
+  mod.list <- map(model, "ranger_mod")  # list of 10 ranger models
+  prep.test.list <- map(model, "test")       # list of 10 prepared test sets
+  class.list <- map(dat, function(x) x |> select("id", "census_region"))  # list of 10 dfs with id and class
+  predictions.list <- pmap(list(mod.list, prep.test.list, class.list), 
+                           function(mod, prep.test, class) {
+                             predictions <- predict(mod, prep.test)$predictions  #note predict.all = FALSE 
+                             bind_cols(class, prediction=predictions)}
+  )}
+)
+  
+```
+
+Calculate the proportion of correct forest classifications (ie misclassification rate)
+
+```{r, message=FALSE, warning=FALSE}
+list.of.forest_mc <- map(list.of.forest_predictions, function(x) {
+    # merge the folds
+    preds <- bind_rows(x, .id="fold") 
+    # weights for each fold
+    w <- preds |> group_by(fold) |> tally() |> pull(n)
+    # misclassification rates of the folds
+    lm <- preds |> mutate(wrong = census_region != prediction) |>
+      group_by(fold) |> summarise(mc = sum(wrong)/n()) |> 
+      lm(mc ~ 1, weights = w, data=_) |> summary()
+    # weighted mean and standard error of the misclassification rates
+    av <- coef(lm)[,"Estimate"]
+    se <- coef(lm)[,"Std. Error"]
+    # confusion matrix
+    conf <- preds |> group_by(fold, census_region, prediction) |> 
+      summarise(n=n()) |> mutate(N=sum(n), p=n/sum(n)) |> ungroup() |>
+      mutate(w = as.numeric(paste(factor(fold, labels=w))), 
+             t_p = paste(census_region, prediction, sep="_")) |> 
+      split(~t_p)
+    # weighted mean and standard error of the confusion matrices
+    conf.lm <- map(conf, function(x) {lm(p~1, weights=w, data=x) |> summary()})
+    conf.av <- map(conf.lm, function(x) coef(x)[,"Estimate"])
+    conf.se <- map(conf.lm, function(x) coef(x)[,"Std. Error"])
+    out <- list(av=av, se=se, conf.av=conf.av, conf.se=conf.se)
+    out})
+
+#list.of.forest_mc |> map(pluck("av"))
+#list.of.forest_mc |> map(pluck("se"))
+```
+
+```{r, eval=FALSE, include=FALSE}
+library(yardstick)
+library(gridExtra)
+
+list.of.heatmaps <- pmap(
+  list(
+    list.of.forest_predictions, 
+    names(list.of.forest_predictions), 
+    list("darkred", "orange", "chartreuse4", "dodgerblue4", "violet")
+    ), 
+  function(preds, name, col) {
+    (bind_rows(preds, .id="fold") |> conf_mat(census_region, prediction))[[1]] |> as.data.frame() |> 
+    mutate(Truth = factor(Truth, levels=rev(levels(Truth)))) |> 
+    ggplot(aes(x=Prediction, y=Truth)) + 
+    geom_tile(aes(fill= Freq)) +
+    geom_text(aes(label = Freq)) +
+    scale_fill_gradient(low="#eeeeee", high=col) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90), legend.position = "bottom") +
+    labs(title=name)
+    })
+    
+do.call("grid.arrange", c(list.of.heatmaps, ncol=3))
+```
+
+Pull out individual tree decisions for each observation,  
+identify observations with unique levels in the testing data,  
+and calculate misclassification rates of the individual trees according to the use of absent levels 
+
+
+
+```{r, message=FALSE}
+list.of.tree_predictions <- map2(list.of.models, list.of.test, function(model, dat){
+  mod.list <- map(model, "ranger_mod")
+  train.list <- map(model, "train")
+  prep.test.list <- map(model, "test")
+  test.list <- dat
+  class.list <- map(model, "class")
+  id.list <- map(model, "id")
+  predictions.list <- pmap(list(mod.list, train.list, prep.test.list, class.list, id.list, test.list),
+    function(mod, train, prep.test, class, id, test) {
+      uniques <- is_unique(data=test, list_of_extras=train$extra)
+      tree_preds <- predict_by_tree(mod=mod, new_data=prep.test, new_unique=uniques, id=id)
+      tree_preds |> left_join(test |> select(id, any_of(class)), by="id")}
+    )}
+  )
+
+list.of.tree_mc <- map(list.of.tree_predictions, function(x){
+  x |> bind_rows() |> 
+    mutate(uses_unique = if_else(uses_unique == 0, "No", "Yes")) |>
+    group_by(uses_unique, census_region, prediction) |>
+    summarise(n=n()) |>
+    group_by(uses_unique, census_region) |>
+    mutate(N = sum(n)) |>
+    mutate(prop = n/N)
+})
+
+```
+
+### `r colorize("It still doesn't seem correct?", "red")`
+ ... the forest misclassification rates are only kind of matching the tree misclassification rates.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+results <- map2(list.of.tree_mc, list.of.forest_mc, function(x,y){
+  tree.yes = x |> ungroup() |> filter(uses_unique=="Yes") |> arrange(desc(prop)) |> select(census_region, prediction, prop) |> mutate(census_region=make.names(census_region), prediction=make.names(prediction))
+  tree.no = x |> ungroup() |> filter(uses_unique=="No") |> arrange(desc(prop)) |> select(census_region, prediction, prop) |> mutate(census_region=make.names(census_region), prediction=make.names(prediction))
+  tree = right_join(tree.yes, tree.no, by=c("census_region", "prediction"), suffix=c(".yes",".no"))
+  forest = y$conf.av |> as.data.frame() |> t() |> as.data.frame() |> rownames_to_column() |> mutate(census_region = str_split_i(rowname, "_", 1)) |> mutate(prediction = str_split_i(rowname, "_", 2)) |> select(census_region, prediction, prop=V1) |> arrange(desc(prop))
+  right_join(tree, forest, by=c("census_region", "prediction")) |> rename(tree.absent=prop.yes,tree.no.absent=prop.no,forest=prop)
+})
+
+results |> map(function(x) x |> filter(census_region == prediction))
+
+```
+
+```{r, out.width="100%", fig.height=12, echo=FALSE, warning=FALSE}
+results |> bind_rows(.id="method") |> 
+  pivot_longer(cols=c(tree.absent, tree.no.absent, forest), names_to = "result", values_to = "p") |> 
+  mutate(method = factor(method, levels=names(list.of.data))) |> 
+  mutate(result = factor(result, levels=c("tree.absent", "tree.no.absent", "forest"))) |> 
+  mutate(across(where(is.character), factor)) |> 
+  mutate(pch = ifelse(census_region==prediction, 21,1)) |> 
+  ggplot(aes(x=prediction, y=p, group=result)) + 
+  geom_point(aes(colour=result, shape=I(pch), bg=result), size=3) +
+  #geom_line(aes(colour=result, lty=result)) +
+  theme_bw(base_size = 11) + 
+  scale_y_continuous("Proportion of predictions\n",expand=c(0.03,0.03),limits=c(0,1)) +
+  theme(legend.position = "bottom") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(strip.text.y = element_text(size = 8)) +
+  facet_grid(census_region~method) +
+  scale_colour_manual(values=c("#9d1001","#10019d","#019d10")) + 
+  scale_fill_manual(values=c("#9d1001","#10019d","#019d10")) + 
+  labs(x="\nPredicted census_region", colour="Absent levels used in prediction", bg="Absent levels used in prediction", 
+       linetype="Absent levels used in prediction")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
