@@ -93,8 +93,3 @@ predict_by_tree <- function(mod, new_data, new_unique, id) {
   predictions <- map_dfr(seq_len(mod$num.trees), ~predict_tree(mod=mod, tree_number=., nd=nd, nu=nu, id=id))
   predictions
 }
-
-  
-  
-  
-

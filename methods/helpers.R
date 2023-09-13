@@ -1,4 +1,4 @@
-## Helper functions for Ranger methods
+## Helper functions for LostInTheForest methods
 
 # This is equivalent of scale(t(scale(t(x), scale=FALSE)),scale=FALSE)
 # This is used in the cmdscale function

@@ -29,7 +29,7 @@ library(ranger)
 library(caret)   # for createFolds
 library(stringdist)   # for distance matrix
 
-# Load in our functions (PCO not required as pre-transforming data)
+# Load in our functions
 source(here("methods","tree_predictions.R")) # to pull out individual tree predictions
 source(here("methods","ranger_mods.R"))
 source(here("methods","ca.R")) # CA method

@@ -1,6 +1,7 @@
 #### Prepare test data and training data for pco method ####
 
 # Load functions
+library(here)
 source(here("methods","helpers.R"))       # Functions used internally in the methods
 
 epsilon <- sqrt(.Machine$double.eps)
@@ -52,9 +53,9 @@ predict_pco <- function(new.var_level, d, diag.B.train, Q, lambdas_B) {
   # new.var_level is length one
   d.new <- d[new.var_level, names(diag.B.train)]
   d.gower <- diag.B.train - (d.new ^ 2)
-  newX <- d.gower %*% Q / (2 * lambdas_B)
-  colnames(newX) = colnames(Q)
-  new_var_level_score <- data.frame(Var_Level = new.var_level, newX)
+  newQ <- d.gower %*% Q / (2 * lambdas_B)
+  colnames(newQ) = colnames(Q)
+  new_var_level_score <- data.frame(Var_Level = new.var_level, newQ)
   new_var_level_score
 }
 

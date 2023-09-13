@@ -1,5 +1,6 @@
 # Load libraries and functions
 source("methods/libs_fns.R")
+source("methods/tree_predictions.R")
 
 # Load sample data 
 # data is genetic data with alleles (levels) from 10 genes (variables) across 3 sources (classes), n=10 for each source
@@ -24,19 +25,19 @@ Dat.test <- LostInTheForest %>% filter(class == "Human") %>% droplevels() %>% mu
 # prepare data using method of choice:
 # 1. ca method
 train <- prepare_training_ca(Dat.train, starts_with("Var"), "class")
-test <- prepare_test_ca(Dat.test, train$extra, id) 
+test <- prepare_test_ca(Dat.test, train$extra, "id") 
 
 # 2. binary method
-train <- prepare_training_ca_binary(Dat.train, starts_with("Var"), "class")
-test <- prepare_test_ca_binary(Dat.test, train$extra, id)
+train <- prepare_training_binary(Dat.train, starts_with("Var"), "class")
+test <- prepare_test_binary(Dat.test, train$extra, "id")
 
 # 3. ca unbiased method
 train <- prepare_training_ca0(Dat.train, starts_with("Var"), "class")
-test <- prepare_test_ca0(Dat.test, train$extra, id)
+test <- prepare_test_ca0(Dat.test, train$extra, "id")
 
 # 4. pco method
 train <- prepare_training_pco(Dat.train, starts_with("Var"), "class", d=list_of_distance_matrices, axes=1)
-test <- prepare_test_pco(Dat.test, train$extra, id)
+test <- prepare_test_pco(Dat.test, train$extra, "id")
 
 ## generate random forest models:
 # 1. for binary method:
@@ -52,7 +53,7 @@ table(Prediction) %>% as.data.frame() # counts of predictions for each source
 ## pull out individual tree decisions for each observation
 uniques <- is_unique(Dat.test, train$extra)
 tree_preds <- predict_by_tree(rf_mod, test, uniques)
-answer <- tree_preds %>% left_join(Dat.test %>% rename(row = id) %>% select(row, class))
+answer <- tree_preds %>% left_join(Dat.test %>% select(id, class))
 answer
 
 

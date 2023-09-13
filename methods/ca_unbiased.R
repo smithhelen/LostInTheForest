@@ -12,9 +12,10 @@ factor_to_ordinal_ca0 <- function(var, class) {
                 extra = list(var_levels=levels(var_levels), dim = 1, suffix=NULL,
                              score = data.frame(Var_Level = c(levels(var_levels), "new"), Rank = c(1, 2)))))
   }
-  ct <- table(Var_Level=var_levels,Class=class)
+  ct <- table(Var_Level=var_levels, Class=class)
   # add zero row - can't add zeros to ct as P will complain. So add 1/num.classes to P (equal probabilities across classes)
-  new <- matrix(rep((1/nlevels(class)),times=nlevels(class)),nrow=1, ncol=nlevels(class), dimnames = list(Var_Level="new",Class=colnames(ct)))
+  new <- matrix(rep((1/nlevels(class)),times=nlevels(class)),nrow=1, 
+                ncol=nlevels(class), dimnames = list(Var_Level="new",Class=colnames(ct)))
   P <- rbind(ct/rowSums(ct),new)
   S <- cov.wt(P, wt = c(rowSums(ct),0))$cov
   pc1 <- eigen(S)$vectors[,1]   ## PCA of weighted covariance matrix of class probabilites 
