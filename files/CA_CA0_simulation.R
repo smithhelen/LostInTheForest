@@ -6,7 +6,7 @@ library(randomForest)
 seed=123
 set.seed(seed)
 
-#change something 
+
 
 # calculate OOB and independent test set misclassification error rates using a range of parameters
 CA0_vs_CA <- function(n=200, p=3, k=35, ntrees=500, ordered=TRUE){
