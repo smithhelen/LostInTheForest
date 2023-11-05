@@ -25,11 +25,15 @@ eigen_decomp <- function(X, symmetric) {
 
 # Filter out eigenvalues based on some criteria
 filter_eigenvalues <- function(ev, m = NULL, mp = 100) {
-  if(is.null(m)){
+  if(!length(m)){ # to catch NULL and ingeter(0) i.e. empty vector
+    if(!length(mp)){
+      mp <- 100
+      message(paste("m and mp are NULL, mp defaults to 100"))
+    }
     VarExp <- cumsum(ev/sum(ev)*100)
-    m <- min(which(round(VarExp,0) >= mp)) #round to avoid error (when rounding error makes it not quite 100, leading to Inf)
+    m <- min(which(VarExp >= mp)) 
+    #m <- min(which(round(VarExp,0) >= mp)) #round to avoid error (when rounding error makes it not quite 100, leading to Inf)
   }
   m <- min(m, length(ev))
   ev[seq_len(m)]
 }
-
