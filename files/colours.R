@@ -60,7 +60,7 @@ rownames(d.hsl) <- colours$Name
 # perform pco analysis
 pco.name <- pco(d.name) |> rename(PCO1.name = V1, PCO2.name = V2)
 pco.rgb <- pco(d.rgb) |> rename(PCO1.rgb = V1, PCO2.rgb = V2)
-pco.hsv <- pco(d.hsv) |> rename(PCO1.hsv = V1, PCO2.hsv = V2)
+pco.hsv <- pco(d.hsv) |> rename(PCO1.hsv = V1, PCO2.hsv = V2) |> mutate(PCO1.hsv = -PCO1.hsv)
 pco.hsl <- pco(d.hsl) |> rename(PCO1.hsl = V1, PCO2.hsl = V2)
 
 
