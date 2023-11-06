@@ -6,6 +6,17 @@ library(stringdist)
 library(seqinr) #for col2alpha
 source("methods/helpers.R") 
 
+pco <- function(d){
+  A <- -0.5 * d^2
+  B <- dbl_center(A)
+  eigen_B <- eigen_decomp(B, symmetric=TRUE)
+  lambdas_B <- eigen_B$values[1:2]
+  Qo <- eigen_B$vectors
+  Q <- sweep(Qo[, seq_along(lambdas_B), drop=FALSE], 2, sqrt(abs(lambdas_B)), "*")
+  score <- left_join(colours, data.frame(Q) |> rownames_to_column("Name"), by = "Name")
+  score
+}
+
 #############################################################################
 # r colours
 colours <- data.frame(Name=colors()) |> rowwise() |> 
@@ -34,16 +45,6 @@ colnames(d.rgb) <- colours$Name
 rownames(d.rgb) <- colours$Name
 
 # perform pco analysis
-pco <- function(d){
-  A <- -0.5 * d^2
-  B <- dbl_center(A)
-  eigen_B <- eigen_decomp(B, symmetric=TRUE)
-  lambdas_B <- eigen_B$values[1:2]
-  Qo <- eigen_B$vectors
-  Q <- sweep(Qo[, seq_along(lambdas_B), drop=FALSE], 2, sqrt(abs(lambdas_B)), "*")
-  score <- left_join(colours, data.frame(Q) |> rownames_to_column("Name"), by = "Name")
-}
-
 pco.name <- pco(d.name) |> rename(PCO1 = V1, PCO2 = V2)
 pco.hex <- pco(d.hex) |> rename(PCO1 = V1, PCO2 = V2)
 pco.rgb <- pco(d.rgb) |> rename(PCO1 = V1, PCO2 = V2)
