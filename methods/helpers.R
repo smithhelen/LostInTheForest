@@ -1,5 +1,7 @@
 ## Helper functions for LostInTheForest methods
 
+epsilon <- sqrt(.Machine$double.eps)
+
 # This is equivalent of scale(t(scale(t(x), scale=FALSE)),scale=FALSE)
 # This is used in the cmdscale function
 # To calculate Gower's B matrix
