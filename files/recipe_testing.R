@@ -1,17 +1,9 @@
-# testing recipe step
-library(tidyverse)
-library(recipes)
-library(rsample)
-source('methods/recipe_ca.R')
-source('methods/recipe_ca0.R')
-source("methods/recipe_pco.R")
-source("methods/recipe_cap.R")
-source('methods/ca.R')
-source('methods/ca_unbiased.R')
-source("methods/pco.R")
-source('methods/cap.R')
+## Testing recipe step for Lost In The Forest
 
+# Load librarys and method
+source("methods/libs_fns.R")
 
+# Load data
 load("../CAP_data/data/list_of_distance_matrices.RData")
 load("../CAP_data/data/cgMLST_dat.RData") # SACNZ cgMLST data set (jejuni and coli)
 Dat_jc <- cgMLST %>% filter(Source != "Human") %>% droplevels() %>% mutate(across(everything(), factor)) 
@@ -20,7 +12,9 @@ Dat_jc <- cgMLST %>% filter(Source != "Human") %>% droplevels() %>% mutate(acros
 #Dat_jc <- Dat_jc |> select(c(1:4, "Source"))
 #list_of_distance_matrices <- list_of_distance_matrices[1:3]
 
-set.seed(3)
+out <- function(x){if(nrow(x)==0) {cat("all matches \n")} else x}
+
+set.seed(123)
 
 split <- initial_split(Dat_jc)
 jc_train <- training(split)
@@ -55,15 +49,15 @@ switch_name <- function(nm) {
   }
 }
 names(foo_train) <- map_chr(names(foo_train), switch_name)
-baked_train |> anti_join(foo_train)
-foo_train |> anti_join(baked_train)
+baked_train |> anti_join(foo_train) |> suppressMessages() |> out()
+foo_train |> anti_join(baked_train) |> suppressMessages() |> out()
 #foo_train |> as_tibble(); baked_train
 # YAY, they're the same! :)
 
 foo_test <- prepare_test_ca(jc_test, foo$extra, "LabID")
 names(foo_test) <- map_chr(names(foo_test), switch_name)
-baked_test |> anti_join(foo_test)
-foo_test |> anti_join(baked_test)
+baked_test |> anti_join(foo_test) |> suppressMessages() |> out()
+foo_test |> anti_join(baked_test) |> suppressMessages() |> out()
 #foo_test |> as_tibble(); baked_test
 # YAY, they're the same! :)
 
@@ -93,15 +87,15 @@ switch_name <- function(nm) {
   }
 }
 names(foo_train) <- map_chr(names(foo_train), switch_name)
-baked_train |> anti_join(foo_train)
-foo_train |> anti_join(baked_train)
+baked_train |> anti_join(foo_train) |> suppressMessages() |> out()
+foo_train |> anti_join(baked_train) |> suppressMessages() |> out()
 #foo_train |> as_tibble(); baked_train
 # YAY, they're the same! :)
 
 foo_test <- prepare_test_ca0(jc_test, foo$extra, "LabID")
 names(foo_test) <- map_chr(names(foo_test), switch_name)
-baked_test |> mutate(across(where(is.numeric), round, 10)) |> anti_join(foo_test |> as_tibble() |> mutate(across(where(is.numeric), round, 10)))
-foo_test |> as_tibble() |> mutate(across(where(is.numeric), round, 10)) |> anti_join(baked_test |> mutate(across(where(is.numeric), round, 10)))
+baked_test |> mutate(across(where(is.numeric), round, 10)) |> anti_join(foo_test |> as_tibble() |> mutate(across(where(is.numeric), round, 10))) |> suppressMessages() |> out()
+foo_test |> as_tibble() |> mutate(across(where(is.numeric), round, 10)) |> anti_join(baked_test |> mutate(across(where(is.numeric), round, 10))) |> suppressMessages() |> out()
 #foo_test |> as_tibble(); baked_test
 # they're kinda the same (at least to 10dp!!)
 
@@ -129,51 +123,16 @@ switch_name <- function(nm) {
 }
 names(foo_train) <- map_chr(names(foo_train), switch_name)
 
-baked_train |> anti_join(foo_train) # SAME! :)
-foo_train |> anti_join(baked_train)
+baked_train |> anti_join(foo_train) |> suppressMessages() |> out()
+foo_train |> anti_join(baked_train) |> suppressMessages() |> out()
 #foo_train |> as_tibble(); baked_train
 # YAY, they're the same! :)
 
 foo_test <- prepare_test_pco(jc_test, foo$extra, "LabID")
 names(foo_test) <- map_chr(names(foo_test), switch_name)
-baked_test |> anti_join(foo_test)
-foo_test |> anti_join(baked_test)
+baked_test |> anti_join(foo_test) |> suppressMessages() |> out()
+foo_test |> anti_join(baked_test) |> suppressMessages() |> out()
 #foo_test |> as_tibble(); baked_test
 # YAY, they're the same! :)
 
 
-
-#### NOW CAP...
-my_recipe <- 
-  recipe(Source ~ ., data=jc_train) |>
-  step_cap(starts_with("CAMP"), distances = list_of_distance_matrices, m=4, mp=99, k=NULL, c=NULL)
-
-prepped_recipe <- my_recipe |>
-  prep()
-
-baked_train <- prepped_recipe |>
-  bake(jc_train)
-baked_test <- prepped_recipe |>
-  bake(jc_test)
-
-# Try the old method
-foo <- prepare_training_cap(jc_train, starts_with("CAMP"), "Source", list_of_distance_matrices, m=4, mp=99, k=NULL, c=NULL)
-foo_train <- foo$training
-switch_name <- function(nm) {
-  root <- substring(nm, 1, 8)
-  colnum <- substring(nm, 11)
-  paste(root, "cap", colnum, sep="_")
-}
-names(foo_train) <- map_chr(names(foo_train), switch_name)
-
-baked_train |> anti_join(foo_train) # SAME! :)
-foo_train |> anti_join(baked_train)
-#foo_train |> as_tibble(); baked_train
-# YAY, they're the same! :)
-
-foo_test <- prepare_test_cap(jc_test, foo$extra, "LabID")
-names(foo_test) <- map_chr(names(foo_test), switch_name)
-baked_test |> anti_join(foo_test)
-foo_test |> anti_join(baked_test)
-#foo_test |> as_tibble(); baked_test
-# YAY, they're the same! :)
