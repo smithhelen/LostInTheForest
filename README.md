@@ -9,12 +9,13 @@ LostInTheForest
 
 ### Overview
 
-This repository is to accompany the manuscript **“Lost In The Forest”**
-by *HL Smith, PJ Biggs, NP French, ANH Smith,* and *JC Marshall* (2022).
+This repository is to accompany the manuscript 
+**“Lost In The Forest: Encoding Categorical Variables and the Absent Levels Problem”**
+by *HL Smith, PJ Biggs, NP French, ANH Smith,* and *JC Marshall* (2023).
 **Lost In The Forest** details new methods for random forest predictive
 models which are unbiased in the presence of absent levels.
 
-This repository contains all the code for the four methods described in
+This repository contains all the code for the three methods described in
 the paper as well as example data to apply the methods to the source
 attribution of *Campylobacter* species.
 
@@ -32,9 +33,11 @@ The key contents are organised as follows:
         -   sample_run.R
     -   methods
         -   ca.R
-        -   ca_binary.R
         -   ca_unbiased.R
         -   pco.R
+        -   recipe_ca.R
+        -   recipe_ca0.R
+        -   recipe_pco.R
         -   hamming.R
         -   helpers.R
         -   libs_fns.R
@@ -45,11 +48,9 @@ The R project is called `LostInTheForest.Rproj`.
 The directory `methods` is where all of the functions for this project
 are stored.
 
--   `ca.R` contains the code for the original method used by Ranger
-    where observations with absent levels are always directed to the
-    right branch at a tree split
--   `ca_binary.R` contains the code for the binary method where factor
-    levels are re-coded as binary factors
+-   `ca.R` contains the code for the original method where observations
+    with absent levels are always directed to the right branch at a
+    tree split
 -   `ca_unbiased.R` contains the code for the adapted ca method where
     observations with absent levels are directed according to the *a
     priori* hypothesis of equal class distribution
@@ -63,6 +64,9 @@ are stored.
 -   `libs_fns.R` for easy loading of required libraries and methods
 -   `tree_predictions.R` contains the code for pulling out individual
     tree predictions from a random forest
+-   `recipe_ca.R` contains the ca method in tidymodels form
+-   `recipe_ca0.R` contains the ca unbiased method in tidymodels form
+-   `recipe_pco.R` contains the pco method in tidymodels form        
 
 The directory `files` contains the file `sample_run` which includes an
 example of running the methods and generating source attribution
@@ -75,7 +79,7 @@ The directory `data` contains the data used in the example file
 
 The data to accompany the example file is a small dataset for the
 purpose of demonstrating the methods in the paper **Lost In The
-Forest**.
+Forest: Encoding Categorical Variables and the Absent Levels Problem**.
 
 There are two files. The file `SeqDat` contains the aligned nucleotide
 sequencing data for 10 genes from each of 40 *Camplyobacter* isolates
