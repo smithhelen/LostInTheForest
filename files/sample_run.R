@@ -27,23 +27,15 @@ Dat.test <- LostInTheForest %>% filter(class == "Human") %>% droplevels() %>% mu
 train <- prepare_training_ca(Dat.train, starts_with("Var"), "class")
 test <- prepare_test_ca(Dat.test, train$extra, "id") 
 
-# 2. binary method
-train <- prepare_training_binary(Dat.train, starts_with("Var"), "class")
-test <- prepare_test_binary(Dat.test, train$extra, "id")
-
-# 3. ca unbiased method
+# 2. ca unbiased method
 train <- prepare_training_ca0(Dat.train, starts_with("Var"), "class")
 test <- prepare_test_ca0(Dat.test, train$extra, "id")
 
-# 4. pco method
-train <- prepare_training_pco(Dat.train, starts_with("Var"), "class", d=list_of_distance_matrices, axes=1)
+# 3. pco method
+train <- prepare_training_pco(Dat.train, starts_with("Var"), "class", d=list_of_distance_matrices, m=1)
 test <- prepare_test_pco(Dat.test, train$extra, "id")
 
 ## generate random forest models:
-# 1. for binary method:
-rf_mod <- ranger(dependent.variable.name = "class", data = train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
-
-# 2. for other methods:
 rf_mod <- ranger(class ~ ., data=train$training, oob.error = TRUE, num.trees=500, respect.unordered.factors = TRUE)
 
 ## make predictions for Human data
@@ -53,7 +45,7 @@ table(Prediction) %>% as.data.frame() # counts of predictions for each source
 ## pull out individual tree decisions for each observation
 uniques <- is_unique(Dat.test, train$extra)
 tree_preds <- predict_by_tree(rf_mod, test, uniques)
-answer <- tree_preds %>% left_join(Dat.test %>% select(id, class))
+answer <- tree_preds %>% left_join(Dat.test %>% select(id, class), by="id")
 answer
 
 
