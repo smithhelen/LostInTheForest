@@ -1,4 +1,4 @@
-## Load libraries and functions all in one - Lost In The Forest methods ##
+## Load libraries and functions for Lost In The Forest methods ##
 
 # Load libraries
 library(tidyverse)
