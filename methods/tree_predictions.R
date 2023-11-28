@@ -3,26 +3,23 @@
 is_unique_level <- function(var, extra) {
   if(!is.numeric(var))  {var <- droplevels(var)}
   var_levels <- pluck(extra, "var_levels")
-  is_unique <- !(var %in% var_levels)
-  dim <- pluck(extra, "dim")
-  suffix <- pluck(extra, "suffix")
-  out <- data.frame(matrix(is_unique, ncol=dim, nrow=length(is_unique))) %>% set_names(suffix)
+  if(is.null(var_levels)) var_levels <- pluck(extra, "levels") # to work with tidymodels
+  is_level_unique <- !(var %in% var_levels)
+  out <- data.frame(is_level_unique)
   out
 }
 
 is_unique <- function(data, list_of_extras) {
   var_cols <- data %>% select(any_of(names(list_of_extras)))
   output <- map2(var_cols, list_of_extras, is_unique_level)
-  uniques <- map2_dfc(output, names(output), 
-                      ~ if(!is.null(names(.x))) {.x %>% set_names(paste(.y, names(.x), sep="."))} 
-                      else(.x %>% set_names(paste(.y))))
+  uniques <- map2_dfc(output, names(output), \(x,y){x |> set_names(paste(y))})
   uniques
 }
 
 # do the tree prediction
 predict_row <- function(tree, data_row, uniques_row) {
   # pass the data down the tree row by row
-  names(uniques_row) <- names(uniques_row) %>% sub("\\..*","",.)
+  names(uniques_row) <- names(uniques_row) %>% sub("[\\._].*", "", .)
   uses_unique <- 0
   prediction <- NULL
   vars_used_in_tree <- NULL
@@ -37,8 +34,7 @@ predict_row <- function(tree, data_row, uniques_row) {
     }
     # is our level unique?
     split = tree$splitvarName[row]  #name of var used in tree
-    # check if the named split variable is in the uniques row
-    name_of_split_variable <- split %>% sub("\\..*","",.)
+    name_of_split_variable <- split %>% sub("[\\._].*", "", .)
     if (name_of_split_variable %in% names(uniques_row) && #' This variable is in the uniques row
         uniques_row[[name_of_split_variable]]) {
       uses_unique = uses_unique + 1
@@ -69,6 +65,7 @@ my_treeInfo <- function(mod, tree_number) {
 }
 
 predict_tree <- function(mod, tree_number, nd, nu, id) {
+  #cat("working on tree", tree_number, "\n")
   tree <- my_treeInfo(mod, tree_number)
   out_dfr <- map2_dfr(nd, nu, ~predict_row(tree, .x, .y))
   out_dfr |>
