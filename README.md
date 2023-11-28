@@ -33,7 +33,7 @@ The key contents are organised as follows:
         -   sample_run.R
     -   methods
         -   ca.R
-        -   ca_unbiased.R
+        -   ca0.R
         -   pco.R
         -   recipe_ca.R
         -   recipe_ca0.R
@@ -51,7 +51,7 @@ are stored.
 -   `ca.R` contains the code for the original method where observations
     with absent levels are always directed to the right branch at a
     tree split
--   `ca_unbiased.R` contains the code for the adapted ca method where
+-   `ca0.R` contains the code for the adapted ca method where
     observations with absent levels are directed according to the *a
     priori* hypothesis of equal class distribution
 -   `pco.R` contains the code for our new method where observations with
