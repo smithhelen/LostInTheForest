@@ -15,11 +15,13 @@ list_of_distance_matrices <- map(genes, ~ dfun(gene=., dat=LostInTheForest, seqd
 names(list_of_distance_matrices) <- genes
 list_of_distance_matrices <- map(list_of_distance_matrices, as.matrix)
 
+
 # Training data is the source data
 Dat.train <- LostInTheForest %>% filter(class != "Human") %>% droplevels() %>% mutate(across(everything(), factor)) 
 
 # Test data is the human data to be attributed to a source
 Dat.test <- LostInTheForest %>% filter(class == "Human") %>% droplevels() %>% mutate(across(everything(), factor)) 
+
 
 ## Source attribution of the sample data using the different methods
 # prepare data using method of choice:
