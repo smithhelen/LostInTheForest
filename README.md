@@ -81,8 +81,9 @@ The data to accompany the example file is a small dataset for the
 purpose of demonstrating the methods in the paper **Lost In The
 Forest: Encoding Categorical Variables and the Absent Levels Problem**.
 
-There are two files. The file `SeqDat` contains the aligned nucleotide
+There are two files. 
+(i) The file `SeqDat` contains the aligned nucleotide
 sequencing data for 10 genes from each of 40 *Camplyobacter* isolates
-collected from four sources (Sheep, Cattle, Chicken, and Human). The
-file `LostInTheForest` contains the corresponding allelic information
-for the aligned sequences.
+collected from four sources (Sheep, Cattle, Chicken, and Human). 
+(ii) The file `LostInTheForest` contains the corresponding allelic 
+information for the aligned sequences.
