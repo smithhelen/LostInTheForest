@@ -64,9 +64,9 @@ are stored.
 -   `libs_fns.R` for easy loading of required libraries and methods
 -   `tree_predictions.R` contains the code for pulling out individual
     tree predictions from a random forest
--   `recipe_ca.R` contains the ca method in tidymodels form
--   `recipe_ca0.R` contains the ca unbiased method in tidymodels form
--   `recipe_pco.R` contains the pco method in tidymodels form        
+-   `recipe_ca.R` contains the ca method as a recipe to use with the tidymodels framework
+-   `recipe_ca0.R` contains the ca unbiased method as a recipe to use with the tidymodels framework
+-   `recipe_pco.R` contains the pco method as a recipe to use with the tidymodels framework
 
 The directory `files` contains the file `sample_run` which includes an
 example of running the methods and generating source attribution
