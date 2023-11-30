@@ -34,7 +34,6 @@ filter_eigenvalues <- function(ev, m = NULL, mp = 100) {
     }
     VarExp <- cumsum(ev/sum(ev)*100)
     m <- min(which(VarExp >= mp)) 
-    #m <- min(which(round(VarExp,0) >= mp)) #round to avoid error (when rounding error makes it not quite 100, leading to Inf)
   }
   m <- min(m, length(ev))
   ev[seq_len(m)]

@@ -1,4 +1,4 @@
-# Recipe for PCO method
+# Recipe for PCO method for "Lost In The Forest"
 
 source('methods/helpers.R')
 
@@ -35,7 +35,7 @@ step_pco <- function(
     id = rand_id("pco")
 ) {
   
-  if (TRUE) { #!recipes::is_tune(m)) { # TODO: Do we need to check for tuning here???
+  if (TRUE) { 
     m <- as.integer(m)
   }
   add_step(
@@ -67,13 +67,14 @@ encode_pco <- function(var, distance, m, mp) {
   
   # use only non-zero eigenvalues
   nlambdas <- sum(eigen_B$values > epsilon)
-  #cat("This one has nlambdas = ", nlambdas, "\n")
   if (nlambdas == 0) {
     # No non-zero eigenvectors
     return(NULL)
   }
+  
   # Restrict to a maximum of eigenvectors set by "m" or "mp (propG)" (default is mp=100% variation)
   lambdas_B <- filter_eigenvalues(eigen_B$values, m=m, mp=mp) # restrict by axes or mp
+  
   # Scale eigenvectors
   Qo <- eigen_B$vectors
   Q <- sweep(Qo[, seq_along(lambdas_B), drop=FALSE], 2, sqrt(abs(lambdas_B)), "*")
@@ -84,29 +85,21 @@ encode_pco <- function(var, distance, m, mp) {
                   lambdas_B=lambdas_B,
                   propG = cumsum(eigen_B$values)/sum(eigen_B$values)*100)
   objects
-  #print(objects)
 }
 
 prep.step_pco <- function(x, training, info = NULL, ...) {
-  # x is the object from the step_pco function, 
-  # training is the training set data (tibble),
-  # and info is a tibble that has information on the current set of data eg variable name, type, and role
-  
-  # grab the columns we're going to prep
+  # select the columns we're going to prep
   col_names <- recipes_eval_select(x$terms, training, info)
   
-  # grab the outcome column
+  # select the outcome column
   outcome_name <- info |> filter(role == "outcome") |> pull(variable)
   if (length(outcome_name) != 1) {
     rlang::abort("One variable with role 'outcome' is required")
   }
   
-  # check the column types are what we want: we want factor variables
-  # (or categorical variables?)
+  # checks
   check_type(training[, col_names], types = c("character", "factor"))
   check_type(training[, outcome_name], types = c("character", "factor"))
-  
-  # check we have the information we need for distances
   if (!is.list(x$distances)) {
     rlang::abort("distances should be a list object of matrices")
   }
@@ -119,10 +112,7 @@ prep.step_pco <- function(x, training, info = NULL, ...) {
   # convert distances to matrices
   x$distances <- map(x$distances, as.matrix)
   
-  # OK, now do the actual PCO step on each column
-  # This computes the m etc using the distance matrices.
-  # The actual data transformation
-  # of current variables is done in 'prep' or 'bake' not here
+  # apply the PCO step to each column
   objects <- purrr::map2(
     training[, col_names],
     x$distances[col_names],
@@ -131,7 +121,6 @@ prep.step_pco <- function(x, training, info = NULL, ...) {
   
   ## Use the constructor function to return the updated object. 
   ## Note that `trained` is now set to TRUE
-  
   step_pco_new(
     terms = x$terms, 
     trained = TRUE,
@@ -146,7 +135,7 @@ prep.step_pco <- function(x, training, info = NULL, ...) {
   )
 }
 
-# Bake step: take our scores and apply them as needed to the columns
+# Bake step: take the scores and apply them as needed to the columns
 apply_pco_to_column <- function(var, encoding) {
   
   # Gower's transformation of new observations into PCO space
@@ -161,7 +150,7 @@ apply_pco_to_column <- function(var, encoding) {
   
   var <- droplevels(var) # ignore levels we don't have in these data
   
-  # Now we figure out which levels are new, and which are the usual
+  # which levels are new, and which are the usual
   new_levels <- setdiff(levels(var), encoding$levels)
   new_scores <- map(new_levels, ~new_level_to_pco(new.var_level = {.},
                                                   d = encoding$d,
@@ -176,17 +165,12 @@ apply_pco_to_column <- function(var, encoding) {
 }
 
 bake.step_pco <- function(object, new_data, ...) {
-  # object is the updated step function that has been prepped, 
-  # new_data is a tibble of data to be processed.
-  
   col_names <- names(object$objects)
   check_new_data(col_names, object, new_data)
-  
-  # generate some new names
   new_names <- imap(object$objects, \(x, nm) { paste(nm, "pco", seq_along(x$lambdas_B), sep="_") })
   new_tbl <- tibble::new_tibble(x = list(), nrow=nrow(new_data))
   
-  # iterate over and generate our new columns
+  # iterate over and generate new columns
   for (col_name in col_names) {
     i_col <- new_data[[col_name]]
     i_obj <- object$objects[[col_name]]
@@ -198,7 +182,7 @@ bake.step_pco <- function(object, new_data, ...) {
     }
   }
   
-  # check the new names and produce our final dataset
+  # check the new names and produce final dataset
   new_tbl <- check_name(new_tbl, new_data, object, names(new_tbl))
   new_data <- bind_cols(new_data, new_tbl)
   new_data <- dplyr::select(new_data, -dplyr::all_of(col_names))

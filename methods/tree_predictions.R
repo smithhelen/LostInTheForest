@@ -32,7 +32,7 @@ predict_row <- function(tree, data_row, uniques_row) {
       prediction = tree$prediction[row]
       break;
     }
-    # is our level unique?
+    # is the level unique?
     split = tree$splitvarName[row]  #name of var used in tree
     name_of_split_variable <- split %>% sub("[\\._].*", "", .)
     if (name_of_split_variable %in% names(uniques_row) && #' This variable is in the uniques row
@@ -65,7 +65,6 @@ my_treeInfo <- function(mod, tree_number) {
 }
 
 predict_tree <- function(mod, tree_number, nd, nu, id) {
-  #cat("working on tree", tree_number, "\n")
   tree <- my_treeInfo(mod, tree_number)
   out_dfr <- map2_dfr(nd, nu, ~predict_row(tree, .x, .y))
   out_dfr |>
