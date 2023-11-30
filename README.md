@@ -82,8 +82,8 @@ purpose of demonstrating the methods in the paper **Lost In The
 Forest: Encoding Categorical Variables and the Absent Levels Problem**.
 
 There are two files:
-1. the file `SeqDat` contains the aligned nucleotide
+1. `SeqDat` contains the aligned nucleotide
 sequencing data for 10 genes from each of 40 *Camplyobacter* isolates
 collected from four sources (Sheep, Cattle, Chicken, and Human) 
-2. The file `LostInTheForest` contains the corresponding allelic 
+2. `LostInTheForest` contains the corresponding allelic 
 information for the aligned sequences.
