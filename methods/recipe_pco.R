@@ -73,7 +73,7 @@ encode_pco <- function(var, distance, m, mp) {
   }
   
   # Restrict to a maximum of eigenvectors set by "m" or "mp (propG)" (default is mp=100% variation)
-  lambdas_B <- filter_eigenvalues(eigen_B$values, m=m, mp=mp) # restrict by axes or mp
+  lambdas_B <- filter_eigenvalues(eigen_B$values[seq_len(nlambdas)], m=m, mp=mp) # restrict by axes or mp
   
   # Scale eigenvectors
   Qo <- eigen_B$vectors
