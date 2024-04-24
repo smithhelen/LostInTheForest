@@ -11,9 +11,13 @@ LostInTheForest
 
 This repository is to accompany the manuscript 
 **“Lost In The Forest: Encoding Categorical Variables and the Absent Levels Problem”**
+<<<<<<< HEAD
 by *HL Smith, PJ Biggs, NP French, ANH Smith,* and *JC Marshall* 
 in Data Mining and Knowledge Discovery (2024)
 DOI 10.1007/s10618-024-01019-w.
+=======
+by *HL Smith, PJ Biggs, NP French, ANH Smith,* and *JC Marshall* (2024).
+>>>>>>> b3a11a7e6e0d82cdd1ca388649dfefb506c82f7b
 **Lost In The Forest** details new methods for random forest predictive
 models which are unbiased in the presence of absent levels.
 
