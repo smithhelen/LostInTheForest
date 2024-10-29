@@ -12,7 +12,7 @@ LostInTheForest
 This repository is to accompany the manuscript
 **"Lost In the Forest: Encoding Categorical Variables and the Absent Levels Problem"** 
 by *HL Smith, PJ Biggs, NP French, ANH Smith,* and *JC Marshall*
-in *Data Mining and Knowledge Discovery* (2024)
+in *Data Mining and Knowledge Discovery* 38, 1889–1908 (2024).
 DOI 10.1007/s10618-024-01019-w.
 
 
